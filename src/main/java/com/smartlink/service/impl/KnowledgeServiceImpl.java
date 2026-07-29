@@ -308,6 +308,8 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         vo.setStatus(e.getStatus());
         if (e.getConfidence() != null) vo.setConfidence(e.getConfidence().doubleValue());
         vo.setMultiDimensional(parseJsonToMap(e.getMultiDimensional()));
+        vo.setSyncStatus(e.getSyncStatus());
+        if (e.getSyncedAt() != null) vo.setSyncedAt(e.getSyncedAt().format(DTF));
         if (e.getCreatedAt() != null) vo.setCreatedAt(e.getCreatedAt().format(DTF));
         if (e.getUpdatedAt() != null) vo.setUpdatedAt(e.getUpdatedAt().format(DTF));
         return vo;
@@ -418,37 +420,39 @@ public class KnowledgeServiceImpl implements KnowledgeService {
         List<QaPairVO> list = new ArrayList<>();
         list.add(qa("QA20260701001", "J7卡车DPF灯亮了怎么办？还能继续开吗？",
                 "当DPF（颗粒捕集器）报警灯亮起时，说明DPF中积碳已达到需要进行再生的程度。建议处理方案：1. 如果车辆动力正常，可以继续行驶但应尽快进行DPF再生；2. 降低车速至80km/h以下；3. 前往最近的服务站进行强制再生；4. 如果动力明显下降或伴有发动机故障灯，建议立即靠边停车并联系客服救援。不建议长期无视DPF报警继续行驶，否则可能导致DPF堵塞损坏，维修费用高达1-2万元。",
-                "DPF灯亮应尽快进行再生处理，降低车速前往服务站，不可长期无视。", "DOC20260702003", "故障处理", "[\"DPF\",\"颗粒捕集器\",\"再生\",\"报警灯\",\"J7\"]", "PUBLISHED", 0.9520, "2026-06-20 09:30:00", "2026-07-01 10:00:00"));
+                "DPF灯亮应尽快进行再生处理，降低车速前往服务站，不可长期无视。", "DOC20260702003", "故障处理", "[\"DPF\",\"颗粒捕集器\",\"再生\",\"报警灯\",\"J7\"]", "PUBLISHED", 0.9520, "SYNCED", "2026-07-15 08:00:00", "2026-06-20 09:30:00", "2026-07-01 10:00:00"));
         list.add(qa("QA20260701002", "解放卡车10万公里大保养需要做哪些项目？费用多少？",
                 "解放卡车10万公里大保养属于重要保养节点，主要包括以下项目：1. 更换发动机机油和机油滤芯；2. 更换柴油滤芯（粗滤+精滤）；3. 更换空气滤芯；4. 更换变速箱油和后桥齿轮油；5. 检查并调整气门间隙；6. 检查刹车片磨损情况；7. 检查转向系统和悬挂系统；8. 检查T-Box终端工作状态。全套费用约3500-5000元，保养时间约3-4小时。",
-                "10万公里保养包含机油三滤、变速箱油、后桥油、气门间隙等，费用3500-5000元，耗时3-4小时。", "DOC20260702004", "保养维修", "[\"保养\",\"10万公里\",\"大保养\",\"费用\"]", "PUBLISHED", 0.9380, "2026-06-22 14:00:00", "2026-07-02 08:30:00"));
+                "10万公里保养包含机油三滤、变速箱油、后桥油、气门间隙等，费用3500-5000元，耗时3-4小时。", "DOC20260702004", "保养维修", "[\"保养\",\"10万公里\",\"大保养\",\"费用\"]", "PUBLISHED", 0.9380, "SYNCED", "2026-07-15 08:30:00", "2026-06-22 14:00:00", "2026-07-02 08:30:00"));
         list.add(qa("QA20260702003", "T-Box设备离线了怎么恢复？",
                 "T-Box离线恢复步骤：1. 首先确认车辆是否在地下室、隧道等信号弱区域；2. 检查车辆电瓶电压是否正常（应大于24V）；3. 熄火状态下等待5分钟后重新通电；4. 通过车队管理平台发送远程重启指令；5. 如果以上方法无效，可能需要远程固件升级或服务站检测硬件。常见原因：SIM卡欠费、天线松动、固件版本过低、电源模块故障。",
-                "T-Box离线先确认信号和电源，可远程重启或升级固件，无法恢复需服务站检测。", "DOC20260701002", "终端设备", "[\"T-Box\",\"离线\",\"远程诊断\",\"固件升级\"]", "PUBLISHED", 0.9210, "2026-06-25 10:00:00", "2026-07-03 09:00:00"));
+                "T-Box离线先确认信号和电源，可远程重启或升级固件，无法恢复需服务站检测。", "DOC20260701002", "终端设备", "[\"T-Box\",\"离线\",\"远程诊断\",\"固件升级\"]", "PUBLISHED", 0.9210, "SYNCED", "2026-07-16 09:00:00", "2026-06-25 10:00:00", "2026-07-03 09:00:00"));
         list.add(qa("QA20260703004", "如何通过车队管理平台查看车辆油耗分析？",
                 "油耗分析操作步骤：1. 登录车队管理平台（PC端或APP端）；2. 在左侧导航栏选择[油耗管理]模块；3. 选择查看维度：单车油耗/车队油耗/月度趋势；4. 选择时间范围；5. 查看百公里油耗曲线图、怠速油耗占比等；6. 支持导出油耗报表（PDF/Excel格式）。平台还提供异常油耗自动告警功能。",
-                "登录平台→油耗管理→选择车辆和时间→查看油耗曲线和统计分析→可导出报表。", "DOC20260703005", "平台操作", "[\"油耗分析\",\"车队管理\",\"平台操作\"]", "PUBLISHED", 0.8950, "2026-06-28 15:00:00", "2026-07-04 11:00:00"));
+                "登录平台→油耗管理→选择车辆和时间→查看油耗曲线和统计分析→可导出报表。", "DOC20260703005", "平台操作", "[\"油耗分析\",\"车队管理\",\"平台操作\"]", "PUBLISHED", 0.8950, "NOT_SYNCED", null, "2026-06-28 15:00:00", "2026-07-04 11:00:00"));
         list.add(qa("QA20260704005", "国六SCR系统故障怎么排查？尿素消耗快正常吗？",
                 "SCR系统故障排查步骤：1. 检查尿素液位是否充足（低于10%会触发报警）；2. 检查尿素质量是否符合GB29518标准；3. 读取故障码判断具体问题；4. 检查尿素管路是否泄漏或结晶。尿素正常消耗量为柴油消耗量的3%-5%，即每100L柴油消耗3-5L尿素。如果消耗明显偏高，可能是排温传感器故障或尿素喷嘴雾化不良。",
-                "SCR系统故障先检查尿素液位和质量，读取故障码定位问题。尿素正常消耗为柴油的3%-5%。", "DOC20260704006", "排放系统", "[\"SCR\",\"尿素\",\"国六\",\"排放\"]", "PUBLISHED", 0.9080, "2026-07-02 09:00:00", "2026-07-05 14:00:00"));
+                "SCR系统故障先检查尿素液位和质量，读取故障码定位问题。尿素正常消耗为柴油的3%-5%。", "DOC20260704006", "排放系统", "[\"SCR\",\"尿素\",\"国六\",\"排放\"]", "PUBLISHED", 0.9080, "SYNCED", "2026-07-17 10:00:00", "2026-07-02 09:00:00", "2026-07-05 14:00:00"));
         list.add(qa("QA20260705006", "车队管理系统如何批量导入车辆？",
                 "批量导入车辆流程：1. 准备车辆信息Excel模板（VIN码、车牌号、T-Box ICCID、车辆型号、所属车队）；2. 登录平台→车辆管理→批量导入→下载模板→填写数据→上传文件；3. 系统自动校验VIN码和ICCID有效性；4. 校验通过后一键导入；5. 等待T-Box上线验证数据。注意：VIN码17位，ICCID 20位，单次最多导入500台车。",
-                "下载Excel模板→填写VIN/ICCID→上传→系统自动校验→一键导入→等待激活。", "DOC20260703005", "平台操作", "[\"批量导入\",\"车辆管理\",\"车队\"]", "PUBLISHED", 0.8860, "2026-07-05 16:00:00", "2026-07-06 10:00:00"));
+                "下载Excel模板→填写VIN/ICCID→上传→系统自动校验→一键导入→等待激活。", "DOC20260703005", "平台操作", "[\"批量导入\",\"车辆管理\",\"车队\"]", "PUBLISHED", 0.8860, "NOT_SYNCED", null, "2026-07-05 16:00:00", "2026-07-06 10:00:00"));
         list.add(qa("QA20260706007", "夏季高温天气解放卡车需要注意哪些保养事项？",
                 "夏季高温保养要点：1. 空调系统：检查制冷剂压力，清洗冷凝器散热片；2. 冷却系统：检查冷却液液位和冰点；3. 轮胎：适当降低胎压（比标准低5%-10%）；4. 电瓶：检查电瓶液位，清洁接线柱氧化物；5. 线路防火：检查发动机舱线路老化情况；6. 油品：使用夏季标号机油（如15W-40）；7. 驾驶习惯：避免长时间高转速行驶。",
-                "夏季保养重点：空调、冷却液、轮胎气压、电瓶、线路检查、夏季机油、避免高温长时间行驶。", "DOC20260705007", "季节性文档", "[\"夏季保养\",\"高温\",\"空调\",\"冷却液\"]", "PUBLISHED", 0.8720, "2026-07-06 08:00:00", "2026-07-07 09:00:00"));
+                "夏季保养重点：空调、冷却液、轮胎气压、电瓶、线路检查、夏季机油、避免高温长时间行驶。", "DOC20260705007", "季节性文档", "[\"夏季保养\",\"高温\",\"空调\",\"冷却液\"]", "PUBLISHED", 0.8720, "NOT_SYNCED", null, "2026-07-06 08:00:00", "2026-07-07 09:00:00"));
         list.add(qa("QA20260707008", "车辆ECU通讯丢失怎么办？什么原因导致的？",
                 "ECU通讯丢失故障处理：1. 首先检查电瓶电压是否正常（24V系统电压应大于22V）；2. 检查ECU供电保险丝是否熔断；3. 检查电瓶负极搭铁线是否松动或腐蚀；4. 检查CAN总线终端电阻；5. 如果以上都正常，可能是ECU本体故障。紧急处理时可尝试断开电瓶负极1分钟后重新连接。",
-                "检查电瓶电压→保险丝→搭铁线→CAN总线电阻→尝试断电重启→仍不行联系服务站。", "DOC20260706008", "故障处理", "[\"ECU\",\"通讯故障\",\"电瓶\",\"保险丝\"]", "PUBLISHED", 0.9140, "2026-07-08 11:00:00", "2026-07-08 16:00:00"));
+                "检查电瓶电压→保险丝→搭铁线→CAN总线电阻→尝试断电重启→仍不行联系服务站。", "DOC20260706008", "故障处理", "[\"ECU\",\"通讯故障\",\"电瓶\",\"保险丝\"]", "PUBLISHED", 0.9140, "NOT_SYNCED", null, "2026-07-08 11:00:00", "2026-07-08 16:00:00"));
         return list;
     }
 
-    private QaPairVO qa(String id, String question, String answer, String brief, String srcDocId, String category, String tagsJson, String status, double confidence, String createdAt, String updatedAt) {
+    private QaPairVO qa(String id, String question, String answer, String brief, String srcDocId, String category, String tagsJson, String status, double confidence, String syncStatus, String syncedAt, String createdAt, String updatedAt) {
         QaPairVO vo = new QaPairVO();
         vo.setId(id); vo.setQuestion(question); vo.setAnswer(answer); vo.setAnswerBrief(brief);
         vo.setSourceDocId(srcDocId); vo.setCategory(category);
         try { vo.setTags(objectMapper.readTree(tagsJson)); } catch (Exception ignored) {}
-        vo.setStatus(status); vo.setConfidence(confidence); vo.setCreatedAt(createdAt); vo.setUpdatedAt(updatedAt);
+        vo.setStatus(status); vo.setConfidence(confidence);
+        vo.setSyncStatus(syncStatus); vo.setSyncedAt(syncedAt);
+        vo.setCreatedAt(createdAt); vo.setUpdatedAt(updatedAt);
         Map<String, Object> multi = new LinkedHashMap<>();
         multi.put("vehicleModels", Arrays.asList("全系"));
         multi.put("difficulty", "中等");

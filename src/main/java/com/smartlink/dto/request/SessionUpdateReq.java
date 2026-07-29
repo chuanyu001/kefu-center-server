@@ -2,20 +2,26 @@ package com.smartlink.dto.request;
 
 import lombok.Data;
 
-import javax.validation.constraints.NotBlank;
-
 /**
- * 工作表更新请求
+ * 工作表更新请求 — 更新可编辑的业务字段
  *
  * @author smartlink
  */
 @Data
 public class SessionUpdateReq {
 
-    /** ICCID(存储在formData中的字段) */
+    /** ICCID */
     private String iccid;
 
-    /** 导出状态 */
-    @NotBlank(message = "导出状态不能为空")
-    private String exportStatus;
+    /** 咨询场景 */
+    private String consultationScenario;
+
+    /** 问题类型 */
+    private String problemType;
+
+    /** 临时解决措施 */
+    private String temporarySolution;
+
+    /** 特殊备注 */
+    private String specialNotes;
 }

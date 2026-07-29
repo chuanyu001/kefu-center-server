@@ -5,7 +5,7 @@ spring:
   application:
     name: customer-service-center
   datasource:
-    url: jdbc:mysql://localhost:3306/kefu_zhongxin?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://localhost:3306/kefu_center?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:4531}
     driver-class-name: com.mysql.cj.jdbc.Driver

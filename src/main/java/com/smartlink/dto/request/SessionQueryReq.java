@@ -13,11 +13,8 @@ public class SessionQueryReq {
     /** 关键词搜索(客户名称、VIN、电话) */
     private String keyword;
 
-    /** 工单类型 */
+    /** 工单类型: fleet_register / after_sales */
     private String workRecordType;
-
-    /** 导出状态 */
-    private String exportStatus;
 
     /** 页码，默认1 */
     private Integer page = 1;

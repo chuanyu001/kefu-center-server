@@ -6,49 +6,36 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 工作表视图对象
- *
- * @author smartlink
+ * 工作表视图对象 — 和 sessions 表列一一对应
  */
 @Data
 public class SessionVO {
 
-    /** 主键ID */
     private String id;
-
-    /** 客户名称 */
     private String customerName;
-
-    /** 客户电话 */
     private String customerPhone;
-
-    /** 车辆VIN码 */
     private String vin;
-
-    /** 工单类型 */
     private String workRecordType;
-
-    /** 导出状态 */
-    private String exportStatus;
-
-    /** 坐席名称 */
+    private String sessionTime;
     private String agentName;
 
-    /** 填写状态 */
-    private String fillStatus;
+    // 业务字段
+    private String iccid;
+    private String carModel;
+    private String fuelType;
+    private String terminalNumber;
+    private String simCard;
+    private String manufacturer;
+    private String recorderModel;
+    private String consultationScenario;
+    private String problemType;
+    private String temporarySolution;
+    private String specialNotes;
 
-    /** AI置信度 */
-    private Double aiConfidence;
-
-    /** 表单数据(已解析) */
-    private Map<String, Object> formData;
-
-    /** 会话消息(已解析) */
-    private List<Map<String, Object>> messages;
-
-    /** 修改历史(已解析) */
+    // 参考数据（JSON解析后）
+    private List<Map<String, Object>> chatMessages;
     private List<Map<String, Object>> modificationHistory;
 
-    /** 会话时间 */
-    private String sessionTime;
+    private String createdAt;
+    private String updatedAt;
 }

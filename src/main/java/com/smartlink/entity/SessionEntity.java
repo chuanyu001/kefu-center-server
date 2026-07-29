@@ -5,13 +5,10 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
  * 工作表实体
- *
- * @author smartlink
  */
 @Data
 @TableName("sessions")
@@ -29,31 +26,56 @@ public class SessionEntity {
     /** 车辆VIN码 */
     private String vin;
 
-    /** 工单类型 */
+    /** 工作表类型: fleet_register / after_sales */
     private String workRecordType;
-
-    /** 导出状态 */
-    private String exportStatus;
 
     /** 会话时间 */
     private String sessionTime;
 
-    /** 坐席名称 */
+    /** 受理客服 */
     private String agentName;
 
-    /** 填写状态 */
-    private String fillStatus;
+    // ── 业务字段（AI自动填充）──
 
-    /** AI置信度 */
-    private BigDecimal aiConfidence;
+    /** ICCID（车队登记表手动输入） */
+    private String iccid;
 
-    /** 表单数据(JSON) */
-    private String formData;
+    /** 车型 */
+    private String carModel;
 
-    /** 会话消息(JSON) */
-    private String messages;
+    /** 燃料类型: 柴油 / LNG / 纯电动 */
+    private String fuelType;
 
-    /** 修改历史(JSON) */
+    /** T-Box终端号 */
+    private String terminalNumber;
+
+    /** SIM卡号 */
+    private String simCard;
+
+    /** 厂家 */
+    private String manufacturer;
+
+    /** 记录仪型号 */
+    private String recorderModel;
+
+    /** 咨询场景 */
+    private String consultationScenario;
+
+    /** 问题类型 */
+    private String problemType;
+
+    /** 临时解决措施 */
+    private String temporarySolution;
+
+    /** 特殊备注 */
+    private String specialNotes;
+
+    // ── 参考数据（JSON）──
+
+    /** 原始会话记录 */
+    private String chatMessages;
+
+    /** 人工修改记录 */
     private String modificationHistory;
 
     /** 创建时间 */

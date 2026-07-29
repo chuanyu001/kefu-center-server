@@ -47,6 +47,12 @@ public class QaPairEntity {
     /** 多维数据(JSON) */
     private String multiDimensional;
 
+    /** 外部同步状态: NOT_SYNCED / SYNCED */
+    private String syncStatus;
+
+    /** 同步到外部QA库的时间 */
+    private LocalDateTime syncedAt;
+
     /** 创建时间 */
     private LocalDateTime createdAt;
 

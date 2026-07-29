@@ -37,8 +37,17 @@ public class DocumentEntity {
     /** 上传时间 */
     private LocalDateTime uploadTime;
 
+    /** 更新时间 */
+    private LocalDateTime updatedAt;
+
     /** 解析状态 */
     private String parseStatus;
+
+    /** 版本号 */
+    private Integer version;
+
+    /** 更新人 */
+    private String updatedBy;
 
     /** 文档内容 */
     private String content;

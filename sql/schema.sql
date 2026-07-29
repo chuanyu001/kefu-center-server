@@ -1,11 +1,11 @@
 -- =============================================
 -- 鱼快创领 客服中心产品自动化平台 - 数据库初始化脚本
--- 数据库: kefu_zhongxin
+-- 数据库: kefu_center
 -- 引擎: InnoDB, 字符集: utf8mb4
 -- =============================================
 
-CREATE DATABASE IF NOT EXISTS kefu_zhongxin DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE kefu_zhongxin;
+CREATE DATABASE IF NOT EXISTS kefu_center DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE kefu_center;
 
 -- ----------------------------
 -- 1. 工作表 (sessions)
@@ -15,15 +15,24 @@ CREATE TABLE IF NOT EXISTS sessions (
     customer_name   VARCHAR(128)    DEFAULT ''              COMMENT '客户名称',
     customer_phone  VARCHAR(32)     DEFAULT ''              COMMENT '客户电话',
     vin             VARCHAR(64)     DEFAULT ''              COMMENT '车辆VIN码',
-    work_record_type VARCHAR(32)    DEFAULT ''              COMMENT '工单类型',
-    export_status   VARCHAR(32)     DEFAULT 'PENDING'       COMMENT '导出状态',
+    work_record_type VARCHAR(32)    DEFAULT ''              COMMENT '工作表类型: fleet_register/after_sales',
     session_time    VARCHAR(64)     DEFAULT ''              COMMENT '会话时间',
-    agent_name      VARCHAR(64)     DEFAULT ''              COMMENT '坐席名称',
-    fill_status     VARCHAR(32)     DEFAULT ''              COMMENT '填写状态',
-    ai_confidence   DECIMAL(5,4)    DEFAULT NULL            COMMENT 'AI置信度',
-    form_data       TEXT                                    COMMENT '表单数据(JSON)',
-    messages        TEXT                                    COMMENT '会话消息(JSON)',
-    modification_history TEXT                               COMMENT '修改历史(JSON)',
+    agent_name      VARCHAR(64)     DEFAULT ''              COMMENT '受理客服',
+    -- 业务字段（拆列，方便查询和索引）
+    iccid           VARCHAR(32)     DEFAULT ''              COMMENT 'ICCID（车队登记表手动输入）',
+    car_model       VARCHAR(128)    DEFAULT ''              COMMENT '车型',
+    fuel_type       VARCHAR(32)     DEFAULT ''              COMMENT '燃料类型: 柴油/LNG/纯电动',
+    terminal_number VARCHAR(64)     DEFAULT ''              COMMENT 'T-Box终端号',
+    sim_card        VARCHAR(32)     DEFAULT ''              COMMENT 'SIM卡号',
+    manufacturer    VARCHAR(64)     DEFAULT ''              COMMENT '厂家',
+    recorder_model  VARCHAR(64)     DEFAULT ''              COMMENT '记录仪型号',
+    consultation_scenario VARCHAR(128) DEFAULT ''           COMMENT '咨询场景',
+    problem_type    VARCHAR(64)     DEFAULT ''              COMMENT '问题类型',
+    temporary_solution TEXT                                 COMMENT '临时解决措施',
+    special_notes   TEXT                                    COMMENT '特殊备注',
+    -- 参考数据（不用于查询，JSON存储）
+    chat_messages   TEXT                                    COMMENT '原始会话记录(JSON)',
+    modification_history TEXT                               COMMENT '人工修改记录(JSON)',
     created_at      DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at      DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='工作表';
@@ -70,7 +79,10 @@ CREATE TABLE IF NOT EXISTS documents (
     subcategory     VARCHAR(64)     DEFAULT ''              COMMENT '子分类',
     file_size       BIGINT          DEFAULT 0               COMMENT '文件大小(字节)',
     upload_time     DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
+    updated_at      DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     parse_status    VARCHAR(32)     DEFAULT 'PENDING'       COMMENT '解析状态',
+    version         INT             DEFAULT 1               COMMENT '版本号',
+    updated_by      VARCHAR(64)     DEFAULT ''              COMMENT '更新人',
     content         TEXT                                    COMMENT '文档内容'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文档';
 
@@ -88,6 +100,8 @@ CREATE TABLE IF NOT EXISTS qa_pairs (
     status          VARCHAR(32)     DEFAULT 'DRAFT'         COMMENT '状态',
     confidence      DECIMAL(5,4)    DEFAULT NULL            COMMENT '置信度',
     multi_dimensional TEXT                                 COMMENT '多维数据(JSON)',
+    sync_status     VARCHAR(16)     DEFAULT 'NOT_SYNCED'    COMMENT '外部同步状态: NOT_SYNCED/SYNCED',
+    synced_at       DATETIME        DEFAULT NULL            COMMENT '同步到外部QA库的时间',
     created_at      DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at      DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='问答对';
