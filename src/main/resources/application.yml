@@ -37,6 +37,15 @@ knife4j:
   setting:
     language: zh-CN
 
+# 鱼快 AI 开放接口（同事提供） —— key 等同事单独发放后填入
+ai:
+  open:
+    chat-url: http://11.127.20.32:30271/pockettools/ai/open/chat
+    sync-url: http://11.127.20.32:30271/pockettools/ai/open/chat/sync
+    api-key: ${AI_OPEN_API_KEY:changeme}
+    connect-timeout: 10000
+    read-timeout: 300000
+
 logging:
   level:
     com.smartlink: debug
