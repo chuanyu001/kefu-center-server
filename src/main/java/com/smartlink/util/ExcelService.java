@@ -26,7 +26,7 @@ public class ExcelService {
         HEADER_TO_FIELD.put("受理人", "agentName");
         HEADER_TO_FIELD.put("创建时间", "sessionTime");
         HEADER_TO_FIELD.put("状态", "qiyuTicketStatus");
-        HEADER_TO_FIELD.put("工单号", "manufacturer");
+        HEADER_TO_FIELD.put("工单号", "qiyuTicketCategory");
 
         FIELD_TO_HEADER.put("vin", "VIN");
         FIELD_TO_HEADER.put("simCard", "SIM卡号");
@@ -34,7 +34,7 @@ public class ExcelService {
         FIELD_TO_HEADER.put("agentName", "受理人");
         FIELD_TO_HEADER.put("sessionTime", "创建时间");
         FIELD_TO_HEADER.put("qiyuTicketStatus", "状态");
-        FIELD_TO_HEADER.put("manufacturer", "工单号");
+        FIELD_TO_HEADER.put("qiyuTicketCategory", "工单号");
         FIELD_TO_HEADER.put("carModel", "车型");
         FIELD_TO_HEADER.put("fuelType", "燃油类型");
         FIELD_TO_HEADER.put("customerName", "客户姓名");

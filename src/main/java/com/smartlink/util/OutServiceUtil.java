@@ -3,6 +3,8 @@ package com.smartlink.util;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -14,6 +16,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class OutServiceUtil {
 
+    private static final Logger log = LoggerFactory.getLogger(OutServiceUtil.class);
     private static final String BASE_URL = "https://dr.smartlink.com.cn/drapp/api/operate/tob/openapi/business";
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
 
@@ -57,7 +60,7 @@ public class OutServiceUtil {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("batchVehicleInfo request failed", e);
         }
         return Collections.emptyList();
     }
@@ -90,7 +93,7 @@ public class OutServiceUtil {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("batchVehicleOperateInfo request failed", e);
         }
         return Collections.emptyList();
     }
