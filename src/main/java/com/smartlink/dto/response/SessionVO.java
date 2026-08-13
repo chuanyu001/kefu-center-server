@@ -2,12 +2,9 @@ package com.smartlink.dto.response;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
-/**
- * 工作表视图对象 — 和 sessions 表列一一对应
- */
 @Data
 public class SessionVO {
 
@@ -18,8 +15,6 @@ public class SessionVO {
     private String workRecordType;
     private String sessionTime;
     private String agentName;
-
-    // 业务字段
     private String iccid;
     private String carModel;
     private String fuelType;
@@ -27,15 +22,19 @@ public class SessionVO {
     private String simCard;
     private String manufacturer;
     private String recorderModel;
+    private String recorderDeviceId;
+    private String antennaPosition;
+    private String noPositionReason;
+    private String noPositionIssue;
+    private String antennaDamaged;
+    private Integer qiyuTicketStatus;
+    private String qiyuTicketCategory;
     private String consultationScenario;
     private String problemType;
     private String temporarySolution;
     private String specialNotes;
-
-    // 参考数据（JSON解析后）
-    private List<Map<String, Object>> chatMessages;
-    private List<Map<String, Object>> modificationHistory;
-
-    private String createdAt;
-    private String updatedAt;
+    private List<?> chatMessages;
+    private List<?> modificationHistory;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /**
- * 鱼快 AI 开放接口配置
+ * 火山方舟 AgentPlan 大模型接口配置
  * 前缀: ai.open
  */
 @Data
@@ -13,14 +13,14 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "ai.open")
 public class AiOpenProperties {
 
-    /** 流式对话接口, 如 http://11.127.20.32:30271/pockettools/ai/open/chat */
-    private String chatUrl;
+    /** OpenAI 兼容对话接口: https://ark.cn-beijing.volces.com/api/v3/chat/completions */
+    private String chatUrl = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
 
-    /** 同步对话接口, 如 http://11.127.20.32:30271/pockettools/ai/open/chat/sync */
-    private String syncUrl;
-
-    /** X-Api-Key 鉴权密钥（同事单独发放） */
+    /** AgentPlan API Key (ark-xxx)，通过环境变量 ARK_API_KEY 注入 */
     private String apiKey;
+
+    /** 默认模型 */
+    private String model = "glm-5-2-260617";
 
     /** HTTP 连接超时(毫秒) */
     private int connectTimeout = 10000;

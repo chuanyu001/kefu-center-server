@@ -15,10 +15,16 @@ import org.springframework.stereotype.Service;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+/**
+ * AI 代理层：转发到火山方舟 AgentPlan (GLM-5.2)
+ * 把 OpenAI 兼容的 SSE 流转换成前端使用的 NDJSON 协议 ({"t":"c",...} 等)。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -28,16 +34,19 @@ public class AiProxyService {
     private final ObjectMapper mapper = new ObjectMapper();
     private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
 
-    public String chatStream(List<Map<String, Object>> messages, String model,
-                              Boolean allowCode, Boolean wantFile, Integer maxRounds,
-                              String endUserId, Consumer<String> lineCallback) {
+    public void chatStream(List<Map<String, Object>> messages, String model,
+                           Boolean allowCode, Boolean wantFile, Integer maxRounds,
+                           String endUserId, Consumer<String> lineCallback) {
+        // 构建 OpenAI 兼容请求体
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("messages", messages);
-        if (model != null && !model.isEmpty()) body.put("model", model);
-        if (allowCode != null) body.put("allowCode", allowCode);
-        if (wantFile != null) body.put("wantFile", wantFile);
-        if (maxRounds != null && maxRounds > 0) body.put("maxRounds", maxRounds);
-        if (endUserId != null && !endUserId.isEmpty()) body.put("endUserId", endUserId);
+        body.put("stream", true);
+        // 前端传的 pro/lite 是业务代号，映射到真实模型名；直接传裸模型名则透传
+        if (model == null || model.isEmpty() || "pro".equals(model) || "lite".equals(model)) {
+            body.put("model", props.getModel());
+        } else {
+            body.put("model", model);
+        }
 
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(props.getConnectTimeout(), TimeUnit.MILLISECONDS)
@@ -45,72 +54,71 @@ public class AiProxyService {
                 .build();
 
         String bodyStr;
-        try { bodyStr = mapper.writeValueAsString(body); }
-        catch (Exception e) { lineCallback.accept("{\"t\":\"e\",\"v\":\"序列化失败\"}"); return ""; }
+        try {
+            bodyStr = mapper.writeValueAsString(body);
+        } catch (Exception e) {
+            lineCallback.accept("{\"t\":\"e\",\"v\":\"请求序列化失败\"}");
+            return;
+        }
 
         Request request = new Request.Builder()
                 .url(props.getChatUrl())
                 .post(RequestBody.create(JSON_TYPE, bodyStr))
-                .addHeader("X-Api-Key", props.getApiKey())
+                .addHeader("Authorization", "Bearer " + props.getApiKey())
                 .build();
 
-        StringBuilder answer = new StringBuilder();
+        StringBuilder fullText = new StringBuilder();
 
         try (Response resp = client.newCall(request).execute()) {
             if (!resp.isSuccessful()) {
-                lineCallback.accept("{\"t\":\"e\",\"v\":\"AI服务异常 " + resp.code() + "\"}");
-                return "";
+                String errBody = resp.body() != null ? resp.body().string() : "";
+                log.warn("[AiProxy] AgentPlan 返回 HTTP {}: {}", resp.code(), errBody.substring(0, Math.min(200, errBody.length())));
+                lineCallback.accept("{\"t\":\"e\",\"v\":\"AI服务请求失败（HTTP " + resp.code() + "）\"}");
+                return;
             }
+
+            // 解析 OpenAI SSE：data: {...} 行，delta.content 是正文增量
             BufferedReader reader = new BufferedReader(
                     new InputStreamReader(resp.body().byteStream(), StandardCharsets.UTF_8));
             String line;
             while ((line = reader.readLine()) != null) {
-                lineCallback.accept(line);
+                if (!line.startsWith("data:")) continue;
+                String data = line.substring(5).trim();
+                if (data.isEmpty() || "[DONE]".equals(data)) continue;
+
                 try {
-                    Map<String, Object> obj = mapper.readValue(line,
+                    Map<String, Object> obj = mapper.readValue(data,
                             new TypeReference<Map<String, Object>>() {});
-                    if ("c".equals(obj.get("t"))) {
-                        answer.append(obj.get("v"));
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> choices = (List<Map<String, Object>>) obj.get("choices");
+                    if (choices == null || choices.isEmpty()) continue;
+
+                    Object deltaObj = choices.get(0).get("delta");
+                    if (!(deltaObj instanceof Map)) continue;
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> delta = (Map<String, Object>) deltaObj;
+
+                    // 思考过程增量 (reasoning_content)
+                    Object reasoning = delta.get("reasoning_content");
+                    if (reasoning != null && !reasoning.toString().isEmpty()) {
+                        lineCallback.accept("{\"t\":\"r\",\"v\":" + mapper.writeValueAsString(reasoning.toString()) + "}");
                     }
-                } catch (Exception ignore) { /* ping */ }
+
+                    // 正文增量
+                    Object content = delta.get("content");
+                    if (content != null && !content.toString().isEmpty()) {
+                        fullText.append(content.toString());
+                        lineCallback.accept("{\"t\":\"c\",\"v\":" + mapper.writeValueAsString(content.toString()) + "}");
+                    }
+                } catch (Exception ignore) {
+                    // 单行解析失败不中断整个流
+                }
             }
+
+            lineCallback.accept("{\"t\":\"done\",\"v\":" + mapper.writeValueAsString(fullText.toString()) + "}");
         } catch (Exception e) {
-            log.warn("[AiProxy] 调用AI网关失败", e);
-            lineCallback.accept("{\"t\":\"e\",\"v\":\"AI服务连接失败\"}");
+            log.warn("[AiProxy] 调用 AgentPlan 失败", e);
+            lineCallback.accept("{\"t\":\"e\",\"v\":\"AI服务连接失败：" + e.getMessage() + "\"}");
         }
-        return answer.toString();
-    }
-
-    public String chatSync(List<Map<String, Object>> messages, String endUserId) {
-        Map<String, Object> body = new LinkedHashMap<>();
-        body.put("messages", messages);
-        if (endUserId != null && !endUserId.isEmpty()) body.put("endUserId", endUserId);
-
-        OkHttpClient client = new OkHttpClient.Builder()
-                .connectTimeout(props.getConnectTimeout(), TimeUnit.MILLISECONDS)
-                .readTimeout(120000, TimeUnit.MILLISECONDS)
-                .build();
-
-        String bodyStr;
-        try { bodyStr = mapper.writeValueAsString(body); }
-        catch (Exception e) { return null; }
-
-        Request request = new Request.Builder()
-                .url(props.getSyncUrl())
-                .post(RequestBody.create(JSON_TYPE, bodyStr))
-                .addHeader("X-Api-Key", props.getApiKey())
-                .build();
-
-        try (Response resp = client.newCall(request).execute()) {
-            if (!resp.isSuccessful()) return null;
-            Map<String, Object> result = mapper.readValue(resp.body().string(),
-                    new TypeReference<Map<String, Object>>() {});
-            if (Boolean.TRUE.equals(result.get("ok"))) {
-                return (String) result.get("answer");
-            }
-        } catch (Exception e) {
-            log.warn("[AiProxy] sync error", e);
-        }
-        return null;
     }
 }
