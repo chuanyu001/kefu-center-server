@@ -82,4 +82,10 @@ public class SessionController {
         Map<String, Object> result = sessionService.syncVehicleInfo();
         return Result.ok(result);
     }
+
+    /** 工单真实数据聚合（供 AI 内容设计使用） */
+    @GetMapping("/analytics")
+    public Result<Map<String, Object>> analytics(@RequestParam(defaultValue = "all") String range) {
+        return Result.ok(sessionService.analytics(range));
+    }
 }

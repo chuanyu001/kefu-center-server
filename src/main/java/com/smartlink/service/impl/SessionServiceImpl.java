@@ -267,6 +267,46 @@ public class SessionServiceImpl implements SessionService {
         return result;
     }
 
+    @Override
+    public Map<String, Object> analytics(String range) {
+        Map<String, Object> result = new HashMap<>();
+
+        // 时间范围：all / 30d / month → 起始日期字符串（session_time 前10位比较）
+        String from = null;
+        LocalDateTime now = LocalDateTime.now();
+        if ("30d".equals(range)) {
+            from = now.minusDays(30).toLocalDate().toString();
+        } else if ("month".equals(range)) {
+            from = now.withDayOfMonth(1).toLocalDate().toString();
+        }
+
+        result.put("range", from == null ? "all" : range);
+        result.put("total", sessionMapper.countTotal(from));
+        result.put("byAgent", sessionMapper.countByAgent(from));
+        result.put("byQiyuStatus", decorateStatus(sessionMapper.countByQiyuStatus(from)));
+        result.put("byProblemType", sessionMapper.countByProblemType(from));
+        result.put("byCategory", sessionMapper.countByCategory(from));
+        result.put("byMonth", sessionMapper.countByMonth(from));
+        result.put("byCarModel", sessionMapper.countByCarModel(from));
+        result.put("byFuelType", sessionMapper.countByFuelType(from));
+        return result;
+    }
+
+    /** 七鱼工单状态码转中文（1-已提交 5-待申领 10-受理中 20-已完结） */
+    private List<Map<String, Object>> decorateStatus(List<Map<String, Object>> rows) {
+        Map<Object, String> statusMap = new HashMap<>();
+        statusMap.put(1, "已提交");
+        statusMap.put(5, "待申领");
+        statusMap.put(10, "受理中");
+        statusMap.put(20, "已完结");
+        for (Map<String, Object> row : rows) {
+            Object status = row.get("status");
+            row.put("name", statusMap.getOrDefault(status, "未知状态"));
+            row.remove("status");
+        }
+        return rows;
+    }
+
     /**
      * Apply vehicle info to entity fields that are currently empty.
      * @return true if any field was updated

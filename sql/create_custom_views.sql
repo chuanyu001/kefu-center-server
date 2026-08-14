@@ -1,0 +1,24 @@
+-- AI 生成的自定义视图（服务端存储，替代前端 localStorage）
+CREATE TABLE IF NOT EXISTS custom_views (
+    id          VARCHAR(64)  NOT NULL COMMENT '主键ID',
+    page_key    VARCHAR(64)  NOT NULL DEFAULT '' COMMENT '页面标识（assistant-global/knowledge-analytics等）',
+    section_key VARCHAR(64)  NOT NULL DEFAULT '' COMMENT '模块标识（global/overview/rankings等）',
+    type        VARCHAR(32)  NOT NULL COMMENT '内容块类型（bar/table/stat等14种）',
+    title       VARCHAR(128) NOT NULL DEFAULT '' COMMENT '标题',
+    labels      TEXT COMMENT '图表标签(JSON数组)',
+    data_json   TEXT COMMENT '图表数据(JSON)',
+    columns_json TEXT COMMENT '表格列(JSON数组)',
+    value_str   VARCHAR(256) COMMENT 'stat类数值',
+    subtitle    VARCHAR(256) COMMENT '副标题',
+    content     TEXT COMMENT '文本内容',
+    items_json  TEXT COMMENT '列表/指标类条目(JSON数组)',
+    tone        VARCHAR(16)  DEFAULT '' COMMENT 'callout色调',
+    width       VARCHAR(16)  DEFAULT 'full' COMMENT '宽度 full/half/third',
+    source_ref  VARCHAR(256) COMMENT '图片来源文件名',
+    src         TEXT COMMENT '图片src',
+    caption     VARCHAR(512) COMMENT '图片说明',
+    created_by  VARCHAR(64)  NOT NULL DEFAULT '' COMMENT '创建人',
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    INDEX idx_page_section (page_key, section_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI生成的自定义视图';

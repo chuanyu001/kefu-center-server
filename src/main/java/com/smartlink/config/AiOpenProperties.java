@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /**
- * 火山方舟 AgentPlan 大模型接口配置
+ * 火山方舟标准端大模型接口配置
  * 前缀: ai.open
  */
 @Data
@@ -16,7 +16,7 @@ public class AiOpenProperties {
     /** OpenAI 兼容对话接口: https://ark.cn-beijing.volces.com/api/v3/chat/completions */
     private String chatUrl = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
 
-    /** AgentPlan API Key (ark-xxx)，通过环境变量 ARK_API_KEY 注入 */
+    /** 火山方舟标准端 API Key (ark-xxx)，通过环境变量 ARK_API_KEY 注入 */
     private String apiKey;
 
     /** 默认模型 */

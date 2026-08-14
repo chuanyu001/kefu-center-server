@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * AI 对话入口：代理到火山方舟 AgentPlan，流式 NDJSON 返回。
+ * AI 对话入口：代理到火山方舟标准端，流式 NDJSON 返回。
  */
 @Slf4j
 @RestController

@@ -22,4 +22,7 @@ public interface SessionService {
     byte[] exportExcel(List<String> ids, List<String> columns);
 
     Map<String, Object> syncVehicleInfo();
+
+    /** 工单真实数据聚合（供 AI 内容设计使用） */
+    Map<String, Object> analytics(String range);
 }

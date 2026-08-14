@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 /**
- * AI 代理层：转发到火山方舟 AgentPlan (GLM-5.2)
+ * AI 代理层：转发到火山方舟标准端 (GLM-5.2)
  * 把 OpenAI 兼容的 SSE 流转换成前端使用的 NDJSON 协议 ({"t":"c",...} 等)。
  */
 @Slf4j
@@ -72,7 +72,7 @@ public class AiProxyService {
         try (Response resp = client.newCall(request).execute()) {
             if (!resp.isSuccessful()) {
                 String errBody = resp.body() != null ? resp.body().string() : "";
-                log.warn("[AiProxy] AgentPlan 返回 HTTP {}: {}", resp.code(), errBody.substring(0, Math.min(200, errBody.length())));
+                log.warn("[AiProxy] 火山方舟标准端返回 HTTP {}: {}", resp.code(), errBody.substring(0, Math.min(200, errBody.length())));
                 lineCallback.accept("{\"t\":\"e\",\"v\":\"AI服务请求失败（HTTP " + resp.code() + "）\"}");
                 return;
             }
@@ -117,7 +117,7 @@ public class AiProxyService {
 
             lineCallback.accept("{\"t\":\"done\",\"v\":" + mapper.writeValueAsString(fullText.toString()) + "}");
         } catch (Exception e) {
-            log.warn("[AiProxy] 调用 AgentPlan 失败", e);
+            log.warn("[AiProxy] 调用火山方舟标准端失败", e);
             lineCallback.accept("{\"t\":\"e\",\"v\":\"AI服务连接失败：" + e.getMessage() + "\"}");
         }
     }

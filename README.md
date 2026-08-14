@@ -19,12 +19,12 @@ src/main/java/com/smartlink/
 ├── config/
 │   ├── WebMvcConfig.java           # CORS、静态资源
 │   ├── MyBatisPlusConfig.java      # MyBatis-Plus 分页插件
-│   └── AiOpenProperties.java       # AI 网关配置（等同事给 key）
+│   └── AiOpenProperties.java       # 火山方舟标准端配置
 ├── controller/
 │   ├── SessionController.java      # M1 工作表 API
 │   ├── ReportController.java       # M2 报表 API
 │   ├── KnowledgeController.java    # M3 知识库 API
-│   └── AiChatController.java       # AI 对话转发（→ 鱼快AI网关）
+│   └── AiChatController.java       # AI 对话转发（→ 火山方舟标准端）
 ├── service/
 │   ├── SessionService.java         # M1 业务逻辑
 │   ├── ReportService.java          # M2 业务逻辑
@@ -94,17 +94,18 @@ mvn spring-boot:run
 - `GET /api/analytics` — 看板
 
 ### AI 对话
-- `POST /api/ai/chat` — 流式对话（转发到鱼快AI网关）
+- `POST /api/ai/chat` — 流式对话（转发到火山方舟标准端）
 
-## AI 网关接入
+## AI 接入
 
-AI 能力通过同事的鱼快 AI 开放接口提供，不自己部署大模型。
+AI 能力直连火山方舟标准端（OpenAI 兼容接口），不自己部署大模型。
 
 配置：`application.yml` → `ai.open`
-- `chat-url`: 流式对话地址（已配）
-- `api-key`: 等同事单独发放
+- `chat-url`: 火山方舟标准端对话地址（已配）
+- `api-key`: 通过环境变量 `ARK_API_KEY` 注入（ark-xxx 火山方舟标准端 Key）
+- `model`: 推理接入点，默认 `glm-5-2-260617`
 
-数据流：前端 → kefu-server → 鱼快 AI 网关 → 火山方舟大模型
+数据流：前端 → kefu-server → 火山方舟标准端
 
 ## 前端仓库
 

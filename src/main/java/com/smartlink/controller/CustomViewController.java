@@ -1,0 +1,171 @@
+package com.smartlink.controller;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.smartlink.common.Result;
+import com.smartlink.entity.CustomViewEntity;
+import com.smartlink.mapper.CustomViewMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+/**
+ * AI 生成的自定义视图：服务端存储（P1），替代前端 localStorage。
+ */
+@Slf4j
+@RestController
+@RequestMapping("/api/custom-views")
+@RequiredArgsConstructor
+public class CustomViewController {
+
+    private final CustomViewMapper customViewMapper;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    /** 查询全部（前端按 pageKey/sectionKey 自行过滤） */
+    @GetMapping
+    public Result<List<Map<String, Object>>> list() {
+        try {
+            List<CustomViewEntity> list = customViewMapper.selectList(
+                    new LambdaQueryWrapper<CustomViewEntity>().orderByAsc(CustomViewEntity::getCreatedAt));
+            return Result.ok(list.stream().map(this::entityToVO).collect(Collectors.toList()));
+        } catch (Exception e) {
+            log.error("查询自定义视图失败", e);
+            return Result.fail("查询失败: " + e.getMessage());
+        }
+    }
+
+    /** 批量保存（一次设计可能生成多个内容块） */
+    @PostMapping
+    public Result<List<Map<String, Object>>> save(@RequestBody Map<String, Object> body) {
+        try {
+            String pageKey = str(body.get("pageKey"));
+            String sectionKey = str(body.get("sectionKey"));
+            String createdBy = str(body.getOrDefault("createdBy", ""));
+            Object viewsObj = body.get("views");
+            if (!(viewsObj instanceof List)) {
+                return Result.fail("views 不能为空");
+            }
+
+            List<Map<String, Object>> saved = new ArrayList<>();
+            @SuppressWarnings("unchecked")
+            List<Object> views = (List<Object>) viewsObj;
+            for (Object viewObj : views) {
+                if (!(viewObj instanceof Map)) continue;
+                @SuppressWarnings("unchecked")
+                Map<String, Object> view = (Map<String, Object>) viewObj;
+                CustomViewEntity entity = new CustomViewEntity();
+                entity.setPageKey(pageKey);
+                entity.setSectionKey(sectionKey);
+                entity.setType(str(view.get("type")));
+                entity.setTitle(str(view.get("title")));
+                entity.setDataRule(toJson(view.get("dataRule")));
+                entity.setLabels(toJson(view.get("labels")));
+                entity.setDataJson(toJson(view.get("data")));
+                entity.setColumnsJson(toJson(view.get("columns")));
+                entity.setValueStr(str(view.get("value")));
+                entity.setSubtitle(str(view.get("subtitle")));
+                entity.setContent(str(view.get("content")));
+                entity.setItemsJson(toJson(view.get("items")));
+                entity.setTone(str(view.get("tone")));
+                entity.setWidth(str(view.getOrDefault("width", "full")));
+                entity.setSourceRef(str(view.get("sourceRef")));
+                entity.setSrc(str(view.get("src")));
+                entity.setCaption(str(view.get("caption")));
+                entity.setCreatedBy(createdBy);
+                customViewMapper.insert(entity);
+                saved.add(entityToVO(entity));
+            }
+            return Result.ok(saved);
+        } catch (Exception e) {
+            log.error("保存自定义视图失败", e);
+            return Result.fail("保存失败: " + e.getMessage());
+        }
+    }
+
+    /** 局部更新（微调标题 / 数据范围） */
+    @PutMapping("/{id}")
+    public Result<Void> update(@PathVariable String id, @RequestBody Map<String, Object> body) {
+        try {
+            CustomViewEntity entity = customViewMapper.selectById(id);
+            if (entity == null) {
+                return Result.notFound("视图不存在");
+            }
+            if (body.containsKey("title")) {
+                entity.setTitle(str(body.get("title")));
+            }
+            if (body.containsKey("dataRule")) {
+                entity.setDataRule(toJson(body.get("dataRule")));
+            }
+            customViewMapper.updateById(entity);
+            return Result.ok(null, "更新成功");
+        } catch (Exception e) {
+            log.error("更新自定义视图失败", e);
+            return Result.fail("更新失败: " + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable String id) {
+        try {
+            customViewMapper.deleteById(id);
+            return Result.ok(null, "删除成功");
+        } catch (Exception e) {
+            log.error("删除自定义视图失败", e);
+            return Result.fail("删除失败: " + e.getMessage());
+        }
+    }
+
+    /** 实体转 VO：JSON 文本字段反序列化回对象，前端保持原数据形状 */
+    private Map<String, Object> entityToVO(CustomViewEntity entity) {
+        Map<String, Object> vo = new java.util.LinkedHashMap<>();
+        vo.put("id", entity.getId());
+        vo.put("pageKey", entity.getPageKey());
+        vo.put("sectionKey", entity.getSectionKey());
+        vo.put("type", entity.getType());
+        vo.put("title", entity.getTitle());
+        putJson(vo, "dataRule", entity.getDataRule());
+        putJson(vo, "labels", entity.getLabels());
+        putJson(vo, "data", entity.getDataJson());
+        putJson(vo, "columns", entity.getColumnsJson());
+        vo.put("value", entity.getValueStr());
+        vo.put("subtitle", entity.getSubtitle());
+        vo.put("content", entity.getContent());
+        putJson(vo, "items", entity.getItemsJson());
+        vo.put("tone", entity.getTone());
+        vo.put("width", entity.getWidth());
+        vo.put("sourceRef", entity.getSourceRef());
+        vo.put("src", entity.getSrc());
+        vo.put("caption", entity.getCaption());
+        vo.put("createdBy", entity.getCreatedBy());
+        vo.put("createdAt", entity.getCreatedAt() == null ? null : entity.getCreatedAt().toString());
+        return vo;
+    }
+
+    private void putJson(Map<String, Object> vo, String key, String json) {
+        if (json == null || json.isEmpty()) return;
+        try {
+            vo.put(key, objectMapper.readValue(json, Object.class));
+        } catch (Exception e) {
+            // JSON 解析失败时原样透传字符串
+            vo.put(key, json);
+        }
+    }
+
+    private String str(Object value) {
+        return value == null ? "" : String.valueOf(value);
+    }
+
+    private String toJson(Object value) {
+        if (value == null) return null;
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+}
