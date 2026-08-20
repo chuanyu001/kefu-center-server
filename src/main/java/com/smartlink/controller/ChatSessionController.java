@@ -28,13 +28,15 @@ public class ChatSessionController {
     private final ChatSessionMapper sessionMapper;
     private final ChatMessageMapper messageMapper;
 
-    /** 会话列表（最近更新的在前） */
+    /** 会话列表（最近更新的在前）；kind 非空时按类型过滤（chat-智能问答/designer-内容设计） */
     @GetMapping
-    public Result<List<Map<String, Object>>> list(@RequestParam(defaultValue = "") String createdBy) {
+    public Result<List<Map<String, Object>>> list(@RequestParam(defaultValue = "") String createdBy,
+                                                  @RequestParam(defaultValue = "") String kind) {
         try {
             List<ChatSessionEntity> list = sessionMapper.selectList(
                     new LambdaQueryWrapper<ChatSessionEntity>()
                             .eq(!"".equals(createdBy), ChatSessionEntity::getCreatedBy, createdBy)
+                            .eq(!"".equals(kind), ChatSessionEntity::getKind, kind)
                             .orderByDesc(ChatSessionEntity::getUpdatedAt));
             return Result.ok(list.stream().map(s -> {
                 Map<String, Object> vo = new LinkedHashMap<>();
@@ -85,6 +87,7 @@ public class ChatSessionController {
                 vo.put("id", m.getId());
                 vo.put("role", m.getRole());
                 vo.put("content", m.getContent());
+                vo.put("payload", m.getPayload());
                 vo.put("createdAt", m.getCreatedAt() == null ? null : m.getCreatedAt().toString());
                 return vo;
             }).collect(Collectors.toList()));
@@ -104,11 +107,13 @@ public class ChatSessionController {
             }
             String role = body.get("role") == null ? "user" : String.valueOf(body.get("role"));
             String content = body.get("content") == null ? "" : String.valueOf(body.get("content"));
+            String payload = body.get("payload") == null ? null : String.valueOf(body.get("payload"));
 
             ChatMessageEntity message = new ChatMessageEntity();
             message.setSessionId(id);
             message.setRole(role);
             message.setContent(content);
+            message.setPayload(payload);
             message.setCreatedAt(LocalDateTime.now());
             messageMapper.insert(message);
 

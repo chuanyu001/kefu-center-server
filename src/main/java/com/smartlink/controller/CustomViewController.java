@@ -1,6 +1,7 @@
 package com.smartlink.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.smartlink.common.Result;
 import com.smartlink.entity.CustomViewEntity;
@@ -87,7 +88,7 @@ public class CustomViewController {
         }
     }
 
-    /** 局部更新（微调标题 / 数据范围） */
+    /** 局部更新（微调标题 / 数据范围 / 编辑面板全字段） */
     @PutMapping("/{id}")
     public Result<Void> update(@PathVariable String id, @RequestBody Map<String, Object> body) {
         try {
@@ -95,13 +96,76 @@ public class CustomViewController {
             if (entity == null) {
                 return Result.notFound("视图不存在");
             }
+            // 统一走 wrapper 显式 set（含 null），避免 updateById 跳过 null 字段；
+            // 同一请求中 dataRule 清空与其他字段修改需一并落库
+            LambdaUpdateWrapper<CustomViewEntity> wrapper = new LambdaUpdateWrapper<CustomViewEntity>()
+                    .eq(CustomViewEntity::getId, id);
+            boolean changed = false;
             if (body.containsKey("title")) {
-                entity.setTitle(str(body.get("title")));
+                wrapper.set(CustomViewEntity::getTitle, str(body.get("title")));
+                changed = true;
             }
             if (body.containsKey("dataRule")) {
-                entity.setDataRule(toJson(body.get("dataRule")));
+                wrapper.set(CustomViewEntity::getDataRule,
+                        body.get("dataRule") == null ? null : toJson(body.get("dataRule")));
+                changed = true;
             }
-            customViewMapper.updateById(entity);
+            // 编辑面板白名单字段：取值方式与 POST 保存一致
+            if (body.containsKey("type")) {
+                wrapper.set(CustomViewEntity::getType, str(body.get("type")));
+                changed = true;
+            }
+            if (body.containsKey("labels")) {
+                wrapper.set(CustomViewEntity::getLabels, toJson(body.get("labels")));
+                changed = true;
+            }
+            if (body.containsKey("data")) {
+                wrapper.set(CustomViewEntity::getDataJson, toJson(body.get("data")));
+                changed = true;
+            }
+            if (body.containsKey("columns")) {
+                wrapper.set(CustomViewEntity::getColumnsJson, toJson(body.get("columns")));
+                changed = true;
+            }
+            if (body.containsKey("value")) {
+                wrapper.set(CustomViewEntity::getValueStr, str(body.get("value")));
+                changed = true;
+            }
+            if (body.containsKey("subtitle")) {
+                wrapper.set(CustomViewEntity::getSubtitle, str(body.get("subtitle")));
+                changed = true;
+            }
+            if (body.containsKey("content")) {
+                wrapper.set(CustomViewEntity::getContent, str(body.get("content")));
+                changed = true;
+            }
+            if (body.containsKey("items")) {
+                wrapper.set(CustomViewEntity::getItemsJson, toJson(body.get("items")));
+                changed = true;
+            }
+            if (body.containsKey("tone")) {
+                wrapper.set(CustomViewEntity::getTone, str(body.get("tone")));
+                changed = true;
+            }
+            if (body.containsKey("width")) {
+                wrapper.set(CustomViewEntity::getWidth, str(body.get("width")));
+                changed = true;
+            }
+            if (body.containsKey("sourceRef")) {
+                wrapper.set(CustomViewEntity::getSourceRef, str(body.get("sourceRef")));
+                changed = true;
+            }
+            if (body.containsKey("src")) {
+                wrapper.set(CustomViewEntity::getSrc, str(body.get("src")));
+                changed = true;
+            }
+            if (body.containsKey("caption")) {
+                wrapper.set(CustomViewEntity::getCaption, str(body.get("caption")));
+                changed = true;
+            }
+            if (changed) {
+                customViewMapper.update(null, wrapper);
+            }
             return Result.ok(null, "更新成功");
         } catch (Exception e) {
             log.error("更新自定义视图失败", e);

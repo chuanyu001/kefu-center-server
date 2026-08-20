@@ -18,5 +18,7 @@ public class ChatMessageEntity {
     /** user / assistant */
     private String role;
     private String content;
+    /** 消息附加数据（JSON文本，如内容设计会话生成的内容块快照） */
+    private String payload;
     private LocalDateTime createdAt;
 }

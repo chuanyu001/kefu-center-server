@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS custom_views (
     section_key VARCHAR(64)  NOT NULL DEFAULT '' COMMENT '模块标识（global/overview/rankings等）',
     type        VARCHAR(32)  NOT NULL COMMENT '内容块类型（bar/table/stat等14种）',
     title       VARCHAR(128) NOT NULL DEFAULT '' COMMENT '标题',
+    data_rule   TEXT COMMENT '数据生成规则(JSON:{dimension,range})',
     labels      TEXT COMMENT '图表标签(JSON数组)',
     data_json   TEXT COMMENT '图表数据(JSON)',
     columns_json TEXT COMMENT '表格列(JSON数组)',

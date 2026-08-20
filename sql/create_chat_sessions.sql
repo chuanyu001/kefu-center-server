@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     session_id  VARCHAR(64) NOT NULL COMMENT '会话ID',
     role        VARCHAR(16) NOT NULL COMMENT 'user/assistant',
     content     TEXT COMMENT '消息内容',
+    payload     TEXT COMMENT '消息附加数据(JSON，如设计器生成的views)',
     created_at  DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '发送时间',
     PRIMARY KEY (id),
     INDEX idx_session (session_id, created_at)
