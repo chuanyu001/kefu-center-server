@@ -17,7 +17,12 @@ public interface SessionService {
 
     void update(String id, SessionUpdateReq req);
 
-    Map<String, Object> importExcel(MultipartFile file);
+    Map<String, Object> importFile(MultipartFile file);
+
+    /** 兼容旧前端调用，内部使用统一文件导入逻辑。 */
+    default Map<String, Object> importExcel(MultipartFile file) {
+        return importFile(file);
+    }
 
     byte[] exportExcel(List<String> ids, List<String> columns);
 

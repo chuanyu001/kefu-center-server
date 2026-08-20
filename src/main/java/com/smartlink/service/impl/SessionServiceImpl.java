@@ -11,8 +11,9 @@ import com.smartlink.dto.response.SessionVO;
 import com.smartlink.entity.SessionEntity;
 import com.smartlink.mapper.SessionMapper;
 import com.smartlink.service.SessionService;
+import com.smartlink.service.VehicleInfoService;
 import com.smartlink.util.ExcelService;
-import com.smartlink.util.OutServiceUtil;
+import com.smartlink.util.ImportFileService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
@@ -23,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,7 +40,10 @@ public class SessionServiceImpl implements SessionService {
     private ExcelService excelService;
 
     @Autowired
-    private OutServiceUtil outServiceUtil;
+    private ImportFileService importFileService;
+
+    @Autowired
+    private VehicleInfoService vehicleInfoService;
 
     @Override
     public PageResult<SessionVO> list(SessionQueryReq req) {
@@ -55,6 +60,10 @@ public class SessionServiceImpl implements SessionService {
                     .like(SessionEntity::getAgentName, req.getKeyword())
                     .or()
                     .like(SessionEntity::getCarModel, req.getKeyword())
+                    .or()
+                    .like(SessionEntity::getRecorderDeviceId, req.getKeyword())
+                    .or()
+                    .like(SessionEntity::getSimCard, req.getKeyword())
             );
         }
 
@@ -84,86 +93,156 @@ public class SessionServiceImpl implements SessionService {
     }
 
     @Override
+    @Transactional
     public void update(String id, SessionUpdateReq req) {
         SessionEntity entity = sessionMapper.selectById(id);
         if (entity == null) {
             throw new RuntimeException("记录不存在: " + id);
         }
 
-        if (StringUtils.isNotBlank(req.getIccid())) {
-            entity.setIccid(req.getIccid());
-        }
-        if (StringUtils.isNotBlank(req.getConsultationScenario())) {
-            entity.setConsultationScenario(req.getConsultationScenario());
-        }
-        if (StringUtils.isNotBlank(req.getProblemType())) {
-            entity.setProblemType(req.getProblemType());
-        }
-        if (StringUtils.isNotBlank(req.getTemporarySolution())) {
-            entity.setTemporarySolution(req.getTemporarySolution());
-        }
-        if (StringUtils.isNotBlank(req.getSpecialNotes())) {
-            entity.setSpecialNotes(req.getSpecialNotes());
-        }
-        if (StringUtils.isNotBlank(req.getAntennaPosition())) {
-            entity.setAntennaPosition(req.getAntennaPosition());
-        }
-        if (StringUtils.isNotBlank(req.getNoPositionReason())) {
-            entity.setNoPositionReason(req.getNoPositionReason());
-        }
-        if (StringUtils.isNotBlank(req.getNoPositionIssue())) {
-            entity.setNoPositionIssue(req.getNoPositionIssue());
-        }
-        if (StringUtils.isNotBlank(req.getAntennaDamaged())) {
-            entity.setAntennaDamaged(req.getAntennaDamaged());
-        }
-        if (StringUtils.isNotBlank(req.getCarModel())) {
-            entity.setCarModel(req.getCarModel());
-        }
-        if (StringUtils.isNotBlank(req.getFuelType())) {
-            entity.setFuelType(req.getFuelType());
-        }
-        if (StringUtils.isNotBlank(req.getManufacturer())) {
-            entity.setManufacturer(req.getManufacturer());
-        }
-        if (StringUtils.isNotBlank(req.getRecorderModel())) {
-            entity.setRecorderModel(req.getRecorderModel());
+        List<Map<String, Object>> history = readModificationHistory(entity.getModificationHistory());
+        boolean changed = false;
+
+        changed |= applyChange(history, "sessionTime", "时间", entity.getSessionTime(),
+                req.getSessionTime(), "人工编辑", entity::setSessionTime);
+
+        String normalizedVin = req.getVin() == null ? null : normalizeVin(req.getVin());
+        boolean vinChanged = applyChange(history, "vin", "VIN码", entity.getVin(),
+                normalizedVin, "人工编辑", entity::setVin);
+        changed |= vinChanged;
+
+        changed |= applyChange(history, "recorderDeviceId", "ID号", entity.getRecorderDeviceId(),
+                req.getRecorderDeviceId(), "人工编辑", entity::setRecorderDeviceId);
+        changed |= applyChange(history, "simCard", "SIM号", entity.getSimCard(),
+                req.getSimCard(), "人工编辑", entity::setSimCard);
+        changed |= applyChange(history, "iccid", "ICCID", entity.getIccid(),
+                req.getIccid(), "人工编辑", entity::setIccid);
+        changed |= applyChange(history, "consultationScenario", "咨询场景", entity.getConsultationScenario(),
+                req.getConsultationScenario(), "人工编辑", entity::setConsultationScenario);
+        changed |= applyChange(history, "problemType", "问题类型", entity.getProblemType(),
+                req.getProblemType(), "人工编辑", entity::setProblemType);
+        changed |= applyChange(history, "temporarySolution", "临时解决方案", entity.getTemporarySolution(),
+                req.getTemporarySolution(), "人工编辑", entity::setTemporarySolution);
+        changed |= applyChange(history, "specialNotes", "特殊备注", entity.getSpecialNotes(),
+                req.getSpecialNotes(), "人工编辑", entity::setSpecialNotes);
+        changed |= applyChange(history, "antennaPosition", "天线位置", entity.getAntennaPosition(),
+                req.getAntennaPosition(), "人工编辑", entity::setAntennaPosition);
+        changed |= applyChange(history, "noPositionReason", "未定位原因", entity.getNoPositionReason(),
+                req.getNoPositionReason(), "人工编辑", entity::setNoPositionReason);
+        changed |= applyChange(history, "noPositionIssue", "未定位问题", entity.getNoPositionIssue(),
+                req.getNoPositionIssue(), "人工编辑", entity::setNoPositionIssue);
+        changed |= applyChange(history, "antennaDamaged", "天线是否损坏", entity.getAntennaDamaged(),
+                req.getAntennaDamaged(), "人工编辑", entity::setAntennaDamaged);
+        changed |= applyChange(history, "manufacturer", "厂家", entity.getManufacturer(),
+                req.getManufacturer(), "人工编辑", entity::setManufacturer);
+        changed |= applyChange(history, "recorderModel", "记录仪型号", entity.getRecorderModel(),
+                req.getRecorderModel(), "人工编辑", entity::setRecorderModel);
+
+        if (vinChanged) {
+            // VIN 改变时旧车型已不再可靠，必须按新 VIN 重新匹配；无匹配则保持为空。
+            changed |= applyChange(history, "carModel", "车型", entity.getCarModel(), "",
+                    "VIN变更清理", entity::setCarModel);
+            changed |= applyChange(history, "fuelType", "燃料类型", entity.getFuelType(), "",
+                    "VIN变更清理", entity::setFuelType);
+            VehicleInfoService.LookupResult lookup = vehicleInfoService.lookup(entity.getVin());
+            if (lookup.isMatched()) {
+                String actor = "mock".equals(lookup.getSource()) ? "VIN测试映射" : "VIN接口补全";
+                changed |= applyChange(history, "carModel", "车型", entity.getCarModel(),
+                        lookup.getCarModel(), actor, entity::setCarModel);
+                changed |= applyChange(history, "fuelType", "燃料类型", entity.getFuelType(),
+                        lookup.getFuelType(), actor, entity::setFuelType);
+            }
+        } else {
+            changed |= applyChange(history, "carModel", "车型", entity.getCarModel(),
+                    req.getCarModel(), "人工编辑", entity::setCarModel);
+            changed |= applyChange(history, "fuelType", "燃料类型", entity.getFuelType(),
+                    req.getFuelType(), "人工编辑", entity::setFuelType);
         }
 
-        entity.setUpdatedAt(LocalDateTime.now());
-        sessionMapper.updateById(entity);
+        if (changed) {
+            entity.setModificationHistory(writeModificationHistory(history));
+            entity.setUpdatedAt(LocalDateTime.now());
+            sessionMapper.updateById(entity);
+        }
     }
 
     @Override
     @Transactional
-    public Map<String, Object> importExcel(MultipartFile file) {
-        Map<String, Object> result = new HashMap<>();
-
-        List<SessionEntity> parsedList = excelService.parseExcel(file);
-
+    public Map<String, Object> importFile(MultipartFile file) {
+        ImportFileService.ParseResult parsed = importFileService.parse(file);
+        List<SessionEntity> parsedList = parsed.getRecords();
+        Map<String, VehicleInfoService.LookupResult> vehicleCache = new HashMap<>();
         int inserted = 0;
         int skipped = 0;
+        int vehicleEnriched = 0;
+        int recorderEnriched = 0;
 
         for (SessionEntity entity : parsedList) {
-            // Dedup by vin + sessionTime
-            LambdaQueryWrapper<SessionEntity> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(SessionEntity::getVin, entity.getVin())
-                    .eq(SessionEntity::getSessionTime, entity.getSessionTime());
-            Long count = sessionMapper.selectCount(wrapper);
-
-            if (count == 0) {
-                entity.setCreatedAt(LocalDateTime.now());
-                entity.setUpdatedAt(LocalDateTime.now());
-                sessionMapper.insert(entity);
-                inserted++;
-            } else {
+            boolean enrichedCar = false;
+            boolean enrichedRecorder = false;
+            if (!isBlank(entity.getVin())) {
+                String vin = normalizeVin(entity.getVin());
+                entity.setVin(vin);
+                VehicleInfoService.LookupResult lookup = vehicleCache.computeIfAbsent(
+                        vin, vehicleInfoService::lookup);
+                if (lookup.isMatched()) {
+                    if (isBlank(entity.getCarModel()) && !isBlank(lookup.getCarModel())) {
+                        entity.setCarModel(blankToNull(lookup.getCarModel()));
+                        enrichedCar = true;
+                    }
+                    if (isBlank(entity.getFuelType()) && !isBlank(lookup.getFuelType())) {
+                        entity.setFuelType(blankToNull(lookup.getFuelType()));
+                        enrichedCar = true;
+                    }
+                    if (isBlank(entity.getManufacturer()) && !isBlank(lookup.getManufacturer())) {
+                        entity.setManufacturer(blankToNull(lookup.getManufacturer()));
+                        enrichedCar = true;
+                    }
+                    if (isBlank(entity.getRecorderModel()) && !isBlank(lookup.getRecorderModel())) {
+                        entity.setRecorderModel(blankToNull(lookup.getRecorderModel()));
+                        enrichedCar = true;
+                    }
+                    if (isBlank(entity.getRecorderDeviceId()) && !isBlank(lookup.getRecorderDeviceId())) {
+                        entity.setRecorderDeviceId(blankToNull(lookup.getRecorderDeviceId()));
+                        enrichedRecorder = true;
+                    }
+                    if (isBlank(entity.getSimCard()) && !isBlank(lookup.getSimCard())) {
+                        entity.setSimCard(blankToNull(lookup.getSimCard()));
+                        enrichedRecorder = true;
+                    }
+                }
+            }
+            if (existsDuplicate(entity)) {
                 skipped++;
+                continue;
+            }
+            entity.setCreatedAt(LocalDateTime.now());
+            entity.setUpdatedAt(LocalDateTime.now());
+            sessionMapper.insert(entity);
+            inserted++;
+            if (enrichedCar) {
+                vehicleEnriched++;
+            }
+            if (enrichedRecorder) {
+                recorderEnriched++;
             }
         }
 
+        Map<String, Object> result = new LinkedHashMap<>();
         result.put("total", parsedList.size());
         result.put("inserted", inserted);
+        result.put("newCount", inserted);
         result.put("skipped", skipped);
+        result.put("recognizedFields", parsed.getRecognizedFields());
+        Map<String, Integer> missingFields = new LinkedHashMap<>();
+        for (Map.Entry<String, Integer> entry : parsed.getRecognizedFields().entrySet()) {
+            missingFields.put(entry.getKey(), parsedList.size() - entry.getValue());
+        }
+        result.put("missingFields", missingFields);
+        result.put("vehicleEnriched", vehicleEnriched);
+        result.put("recorderEnriched", recorderEnriched);
+        result.put("vehicleMode", vehicleInfoService.getMode());
+        result.put("fileType", parsed.getFileType());
         result.put("success", true);
         return result;
     }
@@ -187,83 +266,84 @@ public class SessionServiceImpl implements SessionService {
     }
 
     @Override
+    @Transactional
     public Map<String, Object> syncVehicleInfo() {
-        Map<String, Object> result = new HashMap<>();
-        try {
-            // 1. 一次性查出所有需要同步的 VIN 及其对应记录
-            LambdaQueryWrapper<SessionEntity> wrapper = new LambdaQueryWrapper<>();
-            wrapper.isNotNull(SessionEntity::getVin)
-                    .ne(SessionEntity::getVin, "")
-                    .and(w -> w
-                            .isNull(SessionEntity::getManufacturer).or().eq(SessionEntity::getManufacturer, "")
-                            .or().isNull(SessionEntity::getSimCard).or().eq(SessionEntity::getSimCard, "")
-                            .or().isNull(SessionEntity::getRecorderModel).or().eq(SessionEntity::getRecorderModel, "")
-                            .or().isNull(SessionEntity::getRecorderDeviceId).or().eq(SessionEntity::getRecorderDeviceId, "")
-                    );
+        LambdaQueryWrapper<SessionEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SessionEntity::getWorkRecordType, "recorder_register")
+                .isNotNull(SessionEntity::getVin)
+                .ne(SessionEntity::getVin, "")
+                .and(w -> w
+                        .isNull(SessionEntity::getCarModel).or().eq(SessionEntity::getCarModel, "")
+                        .or().isNull(SessionEntity::getFuelType).or().eq(SessionEntity::getFuelType, "")
+                        .or().isNull(SessionEntity::getManufacturer).or().eq(SessionEntity::getManufacturer, "")
+                        .or().isNull(SessionEntity::getRecorderModel).or().eq(SessionEntity::getRecorderModel, "")
+                        .or().isNull(SessionEntity::getRecorderDeviceId).or().eq(SessionEntity::getRecorderDeviceId, "")
+                        .or().isNull(SessionEntity::getSimCard).or().eq(SessionEntity::getSimCard, ""));
 
-            List<SessionEntity> needSyncList = sessionMapper.selectList(wrapper);
-            Set<String> vinSet = needSyncList.stream()
-                    .map(SessionEntity::getVin)
-                    .filter(v -> v != null && !v.isEmpty())
-                    .collect(Collectors.toSet());
+        List<SessionEntity> needSyncList = sessionMapper.selectList(wrapper);
+        Map<String, VehicleInfoService.LookupResult> detailCache = new LinkedHashMap<>();
+        Map<String, VehicleInfoService.LookupResult> recorderCache = new LinkedHashMap<>();
+        int updated = 0;
+        for (SessionEntity entity : needSyncList) {
+            String vin = normalizeVin(entity.getVin());
+            boolean changed = false;
 
-            List<String> vinList = new ArrayList<>(vinSet);
-            int totalSynced = 0;
-            int batchSize = 50;
-
-            for (int i = 0; i < vinList.size(); i += batchSize) {
-                int end = Math.min(i + batchSize, vinList.size());
-                List<String> batch = vinList.subList(i, end);
-
-                List<Map<String, Object>> vehicleInfoList = outServiceUtil.batchVehicleInfo(batch);
-                List<Map<String, Object>> operateInfoList = outServiceUtil.batchVehicleOperateInfo(batch);
-
-                // Build VIN -> merged info map
-                Map<String, Map<String, Object>> infoMap = new HashMap<>();
-                for (Map<String, Object> info : vehicleInfoList) {
-                    Object vin = info.get("vin");
-                    if (vin != null) infoMap.put(vin.toString(), info);
-                }
-                for (Map<String, Object> info : operateInfoList) {
-                    Object vin = info.get("vin");
-                    if (vin != null) {
-                        infoMap.merge(vin.toString(), info, (old, newVal) -> {
-                            old.putAll(newVal);
-                            return old;
-                        });
+            // 车型/燃料/厂家/记录仪型号：预留运营平台 API（现为模拟数据），无需外呼
+            boolean needDetail = isBlank(entity.getCarModel()) || isBlank(entity.getFuelType())
+                    || isBlank(entity.getManufacturer()) || isBlank(entity.getRecorderModel());
+            if (needDetail) {
+                VehicleInfoService.LookupResult detail = detailCache.computeIfAbsent(
+                        vin, vehicleInfoService::lookupDetail);
+                if (detail.isMatched()) {
+                    if (isBlank(entity.getCarModel()) && !isBlank(detail.getCarModel())) {
+                        entity.setCarModel(detail.getCarModel());
+                        changed = true;
                     }
-                }
-
-                // 2. 批量更新：一次性查出该批次所有 VIN 的记录，收集更新后批量提交
-                List<SessionEntity> batchRecords = sessionMapper.selectList(
-                        new LambdaQueryWrapper<SessionEntity>().in(SessionEntity::getVin, batch));
-
-                List<SessionEntity> toUpdate = new ArrayList<>();
-                for (SessionEntity record : batchRecords) {
-                    Map<String, Object> info = infoMap.get(record.getVin());
-                    if (info == null) continue;
-
-                    boolean changed = applyVehicleInfo(record, info);
-                    if (changed) {
-                        record.setUpdatedAt(LocalDateTime.now());
-                        toUpdate.add(record);
+                    if (isBlank(entity.getFuelType()) && !isBlank(detail.getFuelType())) {
+                        entity.setFuelType(detail.getFuelType());
+                        changed = true;
                     }
-                }
-
-                for (SessionEntity entity : toUpdate) {
-                    sessionMapper.updateById(entity);
-                    totalSynced++;
+                    if (isBlank(entity.getManufacturer()) && !isBlank(detail.getManufacturer())) {
+                        entity.setManufacturer(detail.getManufacturer());
+                        changed = true;
+                    }
+                    if (isBlank(entity.getRecorderModel()) && !isBlank(detail.getRecorderModel())) {
+                        entity.setRecorderModel(detail.getRecorderModel());
+                        changed = true;
+                    }
                 }
             }
 
-            result.put("success", true);
-            result.put("totalVins", vinList.size());
-            result.put("syncedCount", totalSynced);
-        } catch (Exception e) {
-            log.error("syncVehicleInfo error", e);
-            result.put("success", false);
-            result.put("message", e.getMessage());
+            // ID号/SIM号：运营平台真实接口，仅在缺失时外呼
+            boolean needRecorder = isBlank(entity.getRecorderDeviceId()) || isBlank(entity.getSimCard());
+            if (needRecorder) {
+                VehicleInfoService.LookupResult recorder = recorderCache.computeIfAbsent(
+                        vin, vehicleInfoService::lookupRecorder);
+                if (recorder.isMatched()) {
+                    if (isBlank(entity.getRecorderDeviceId()) && !isBlank(recorder.getRecorderDeviceId())) {
+                        entity.setRecorderDeviceId(recorder.getRecorderDeviceId());
+                        changed = true;
+                    }
+                    if (isBlank(entity.getSimCard()) && !isBlank(recorder.getSimCard())) {
+                        entity.setSimCard(recorder.getSimCard());
+                        changed = true;
+                    }
+                }
+            }
+
+            if (changed) {
+                entity.setUpdatedAt(LocalDateTime.now());
+                sessionMapper.updateById(entity);
+                updated++;
+            }
         }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("success", true);
+        result.put("mode", vehicleInfoService.getMode());
+        result.put("totalVins", needSyncList.size());
+        result.put("updated", updated);
+        result.put("syncedCount", updated);
         return result;
     }
 
@@ -307,46 +387,87 @@ public class SessionServiceImpl implements SessionService {
         return rows;
     }
 
-    /**
-     * Apply vehicle info to entity fields that are currently empty.
-     * @return true if any field was updated
-     */
-    private boolean applyVehicleInfo(SessionEntity entity, Map<String, Object> info) {
-        boolean changed = false;
+    private boolean existsDuplicate(SessionEntity entity) {
+        LambdaQueryWrapper<SessionEntity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SessionEntity::getWorkRecordType, "recorder_register");
+        boolean hasIdentityField = false;
+        if (!isBlank(entity.getSessionTime())) {
+            wrapper.eq(SessionEntity::getSessionTime, entity.getSessionTime());
+            hasIdentityField = true;
+        }
+        if (!isBlank(entity.getVin())) {
+            wrapper.eq(SessionEntity::getVin, entity.getVin());
+            hasIdentityField = true;
+        }
+        if (!isBlank(entity.getRecorderDeviceId())) {
+            wrapper.eq(SessionEntity::getRecorderDeviceId, entity.getRecorderDeviceId());
+            hasIdentityField = true;
+        }
+        if (!isBlank(entity.getSimCard())) {
+            wrapper.eq(SessionEntity::getSimCard, entity.getSimCard());
+            hasIdentityField = true;
+        }
+        return hasIdentityField && sessionMapper.selectCount(wrapper) > 0;
+    }
 
-        if (isBlank(entity.getManufacturer())) {
-            Object val = info.get("manufacturer");
-            if (val != null && !val.toString().isEmpty()) {
-                entity.setManufacturer(val.toString());
-                changed = true;
-            }
+    private boolean applyChange(List<Map<String, Object>> history, String field, String fieldLabel,
+                                String oldValue, String newValue, String modifiedBy,
+                                Consumer<String> setter) {
+        if (newValue == null || Objects.equals(nullToEmpty(oldValue), nullToEmpty(newValue))) {
+            return false;
         }
-        if (isBlank(entity.getRecorderModel())) {
-            Object val = info.get("recorderModel");
-            if (val != null && !val.toString().isEmpty()) {
-                entity.setRecorderModel(val.toString());
-                changed = true;
-            }
+        setter.accept(newValue);
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("id", UUID.randomUUID().toString());
+        item.put("field", field);
+        item.put("fieldLabel", fieldLabel);
+        item.put("oldValue", nullToEmpty(oldValue));
+        item.put("newValue", nullToEmpty(newValue));
+        item.put("modifiedBy", modifiedBy);
+        item.put("modifiedAt", LocalDateTime.now().toString());
+        history.add(item);
+        return true;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> readModificationHistory(String json) {
+        if (isBlank(json)) {
+            return new ArrayList<>();
         }
-        if (isBlank(entity.getSimCard())) {
-            Object val = info.get("simCard");
-            if (val != null && !val.toString().isEmpty()) {
-                entity.setSimCard(val.toString());
-                changed = true;
-            }
+        try {
+            return new ArrayList<>(objectMapper.readValue(json, List.class));
+        } catch (Exception e) {
+            log.warn("Invalid modification history JSON, start a new history", e);
+            return new ArrayList<>();
         }
-        if (isBlank(entity.getRecorderDeviceId())) {
-            Object val = info.get("recorderDeviceId");
-            if (val != null && !val.toString().isEmpty()) {
-                entity.setRecorderDeviceId(val.toString());
-                changed = true;
+    }
+
+    private String writeModificationHistory(List<Map<String, Object>> history) {
+        try {
+            List<Map<String, Object>> retained = history;
+            if (history.size() > 200) {
+                retained = new ArrayList<>(history.subList(history.size() - 200, history.size()));
             }
+            return objectMapper.writeValueAsString(retained);
+        } catch (Exception e) {
+            throw new RuntimeException("修改记录保存失败", e);
         }
-        return changed;
+    }
+
+    private String normalizeVin(String vin) {
+        return vin == null ? "" : vin.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String blankToNull(String value) {
+        return isBlank(value) ? null : value;
+    }
+
+    private String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     private boolean isBlank(String str) {
-        return str == null || str.isEmpty();
+        return str == null || str.trim().isEmpty();
     }
 
     // ==================== Helper Methods ====================

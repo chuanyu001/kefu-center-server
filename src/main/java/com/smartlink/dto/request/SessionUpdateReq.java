@@ -5,6 +5,10 @@ import lombok.Data;
 @Data
 public class SessionUpdateReq {
 
+    private String sessionTime;
+    private String vin;
+    private String recorderDeviceId;
+    private String simCard;
     private String iccid;
     private String consultationScenario;
     private String problemType;

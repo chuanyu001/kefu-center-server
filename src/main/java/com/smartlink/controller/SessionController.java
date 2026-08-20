@@ -48,8 +48,19 @@ public class SessionController {
 
     @PostMapping("/import-excel")
     public Result<Map<String, Object>> importExcel(@RequestParam("file") MultipartFile file) {
-        Map<String, Object> result = sessionService.importExcel(file);
-        return Result.ok(result);
+        return importFile(file);
+    }
+
+    @PostMapping("/import-file")
+    public Result<Map<String, Object>> importFile(@RequestParam("file") MultipartFile file) {
+        try {
+            Map<String, Object> result = sessionService.importFile(file);
+            return Result.ok(result, "文件识别并保存完成");
+        } catch (IllegalArgumentException e) {
+            return Result.fail(e.getMessage());
+        } catch (Exception e) {
+            return Result.fail("文件处理失败，请检查文件内容和格式");
+        }
     }
 
     @PostMapping("/export-excel")

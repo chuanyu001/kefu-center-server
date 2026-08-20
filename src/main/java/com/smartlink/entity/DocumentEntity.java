@@ -25,4 +25,10 @@ public class DocumentEntity {
     private Integer version;
     private String updatedBy;
     private String content;
+
+    /** 文档来源平台：dingtalk（钉钉文档）/ tencent（腾讯/金山在线文档） */
+    private String platform;
+
+    /** 在线文档链接（腾讯文档、金山文档等） */
+    private String url;
 }

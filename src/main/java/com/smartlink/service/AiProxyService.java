@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,15 +32,19 @@ import java.util.function.Consumer;
 public class AiProxyService {
 
     private final AiOpenProperties props;
+    private final KnowledgeService knowledgeService;
     private final ObjectMapper mapper = new ObjectMapper();
     private static final MediaType JSON_TYPE = MediaType.parse("application/json; charset=utf-8");
 
     public void chatStream(List<Map<String, Object>> messages, String model,
                            Boolean allowCode, Boolean wantFile, Integer maxRounds,
                            String endUserId, Consumer<String> lineCallback) {
+        // 注入知识库检索内容（若有），使模型基于内部知识回答
+        List<Map<String, Object>> finalMessages = augmentWithKnowledge(messages);
+
         // 构建 OpenAI 兼容请求体
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("messages", messages);
+        body.put("messages", finalMessages);
         body.put("stream", true);
         // 前端传的 pro/lite 是业务代号，映射到真实模型名；直接传裸模型名则透传
         if (model == null || model.isEmpty() || "pro".equals(model) || "lite".equals(model)) {
@@ -120,5 +125,53 @@ public class AiProxyService {
             log.warn("[AiProxy] 调用火山方舟标准端失败", e);
             lineCallback.accept("{\"t\":\"e\",\"v\":\"AI服务连接失败：" + e.getMessage() + "\"}");
         }
+    }
+
+    /**
+     * 用知识库检索结果增强消息：抽取最后一条用户消息 → 检索 document_chunks →
+     * 在消息最前插入一段“知识库参考”系统消息，让模型基于内部知识回答。
+     */
+    private List<Map<String, Object>> augmentWithKnowledge(List<Map<String, Object>> messages) {
+        String lastUser = null;
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            Map<String, Object> m = messages.get(i);
+            if ("user".equals(m.get("role"))) {
+                Object c = m.get("content");
+                if (c != null && !c.toString().trim().isEmpty()) {
+                    lastUser = c.toString();
+                    break;
+                }
+            }
+        }
+        if (lastUser == null) {
+            return messages;
+        }
+
+        List<KnowledgeService.Retrieved> chunks = knowledgeService.retrieve(lastUser);
+        if (chunks.isEmpty()) {
+            return messages;
+        }
+
+        StringBuilder kb = new StringBuilder();
+        for (int i = 0; i < chunks.size(); i++) {
+            KnowledgeService.Retrieved r = chunks.get(i);
+            kb.append("\n【参考").append(i + 1).append("】文档《").append(r.docTitle).append("》");
+            if (r.section != null && !r.section.isEmpty()) {
+                kb.append("（").append(r.section).append("）");
+            }
+            kb.append("\n").append(r.text).append("\n");
+        }
+
+        String grounding = "以下是知识库中与当前问题相关的检索内容。请优先依据这些内容给出准确、可执行的回答，"
+                + "并在回答中标注所依据的文档名称（如《xxx》）；若检索内容不足以回答，请明确说明，不要编造。"
+                + kb.toString();
+
+        List<Map<String, Object>> augmented = new ArrayList<>(messages.size() + 1);
+        Map<String, Object> sys = new LinkedHashMap<>();
+        sys.put("role", "system");
+        sys.put("content", grounding);
+        augmented.add(sys);
+        augmented.addAll(messages);
+        return augmented;
     }
 }

@@ -18,6 +18,10 @@ spring:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: Asia/Shanghai
     default-property-inclusion: non_null
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
@@ -40,6 +44,21 @@ ai:
     model: ${AI_OPEN_MODEL:glm-5-2-260617}
     connect-timeout: 10000
     read-timeout: 300000
+report:
+  export:
+    # 可用环境变量覆盖；Windows 后端进程不再依赖 PATH 中是否包含 node。
+    node-path: "${REPORT_EXPORT_NODE_PATH:C:/Program Files/nodejs/node.exe}"
+    script-path: D:/kefu_center_web/kefu-center-web/scripts/report-export.cjs
+    work-dir: D:/kefu_center_web/kefu-center-web
+    timeout-seconds: 90
+vehicle-info:
+  # api: 调用运营平台 batchVehicleInfo/batchVehicleOperateInfo 补全 ID号/SIM号。
+  # mock: 仅演示用假数据。
+  mode: ${VEHICLE_INFO_MODE:api}
+  # 预留：车型/燃料类型/厂家/记录仪型号 的运营平台 API（带 key）地址与 key。
+  # 拿到后填入并实现 VehicleInfoService#lookupVehicleDetail 即可，调用方无需改动。
+  detail-url: ${VEHICLE_INFO_DETAIL_URL:}
+  detail-key: ${VEHICLE_INFO_DETAIL_KEY:}
 logging:
   level:
     com.smartlink: debug
