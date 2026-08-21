@@ -1,0 +1,112 @@
+@echo off
+chcp 65001 >nul
+title 客服中心一键启动
+
+set "ROOT=D:\kefu_center_web"
+set "JAVA_HOME=C:\Program Files\Amazon Corretto\jdk1.8.0_502"
+set "MAVEN_HOME=%ROOT%\tools\apache-maven-3.9.11"
+set "MYSQL_HOME=C:\Program Files\MySQL\MySQL Server 8.4"
+set "MYSQL_DATA=%ROOT%\mysql-data"
+set "BACKEND_DIR=%ROOT%\客服中心产品自动化_extracted\客服中心产品自动化\kefu-center-server"
+set "FRONTEND_DIR=%ROOT%\kefu-center-web"
+set "PATH=%JAVA_HOME%\bin;%MAVEN_HOME%\bin;%MYSQL_HOME%\bin;%PATH%"
+set "DB_USERNAME=root"
+set "DB_PASSWORD=请填写数据库密码"
+set "ARK_API_KEY=请填写ARK密钥"
+
+echo ========================================
+echo  客服中心产品自动化 - 一键启动
+echo ========================================
+echo.
+
+if not exist "%JAVA_HOME%\bin\java.exe" (
+  echo [错误] 找不到 Java: %JAVA_HOME%\bin\java.exe
+  pause
+  exit /b 1
+)
+
+if not exist "%MAVEN_HOME%\bin\mvn.cmd" (
+  echo [错误] 找不到 Maven: %MAVEN_HOME%\bin\mvn.cmd
+  pause
+  exit /b 1
+)
+
+if not exist "%MYSQL_HOME%\bin\mysqld.exe" (
+  echo [错误] 找不到 MySQL: %MYSQL_HOME%\bin\mysqld.exe
+  pause
+  exit /b 1
+)
+
+if not exist "%BACKEND_DIR%\pom.xml" (
+  echo [错误] 找不到后端项目: %BACKEND_DIR%\pom.xml
+  pause
+  exit /b 1
+)
+
+if not exist "%FRONTEND_DIR%\package.json" (
+  echo [错误] 找不到前端项目: %FRONTEND_DIR%\package.json
+  pause
+  exit /b 1
+)
+
+call :CheckPort 3306
+if errorlevel 1 (
+  echo [1/3] 正在启动 MySQL 3306...
+  start "客服中心 MySQL" cmd /k ""%MYSQL_HOME%\bin\mysqld.exe" --console --basedir="%MYSQL_HOME%" --datadir="%MYSQL_DATA%" --port=3306 --bind-address=127.0.0.1"
+  call :WaitPort 3306 40
+) else (
+  echo [1/3] MySQL 3306 已在运行，跳过启动。
+)
+
+call :CheckPort 8080
+if errorlevel 1 (
+  echo [2/3] 正在启动后端 Spring Boot 8080...
+  start "客服中心后端 8080" cmd /k "cd /d "%BACKEND_DIR%" && set "JAVA_HOME=%JAVA_HOME%" && set "PATH=%PATH%" && set "DB_USERNAME=root" && set "DB_PASSWORD=请填写数据库密码" && set "ARK_API_KEY=请填写ARK密钥" && mvn spring-boot:run"
+  call :WaitPort 8080 90
+) else (
+  echo [2/3] 后端 8080 已在运行，跳过启动。
+)
+
+call :CheckPort 3000
+if errorlevel 1 (
+  echo [3/3] 正在启动前端 Vite 3000...
+  start "客服中心前端 3000" cmd /k "cd /d "%FRONTEND_DIR%" && node_modules\.bin\vite.cmd --host 127.0.0.1 --port 3000"
+  call :WaitPort 3000 40
+) else (
+  echo [3/3] 前端 3000 已在运行，跳过启动。
+)
+
+echo.
+echo ========================================
+echo  启动完成
+echo ========================================
+echo 前端页面: http://localhost:3000
+echo 后端接口: http://localhost:8080/doc.html
+echo.
+echo 如果有新打开的 MySQL / 后端 / 前端窗口，请不要关闭它们；关闭窗口会停止对应服务。
+echo.
+start "" "http://localhost:3000"
+pause
+exit /b 0
+
+:CheckPort
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$r=Test-NetConnection -ComputerName 127.0.0.1 -Port %1 -WarningAction SilentlyContinue; if($r.TcpTestSucceeded){exit 0}else{exit 1}" >nul 2>nul
+exit /b %errorlevel%
+
+:WaitPort
+set "PORT=%1"
+set "MAX_WAIT=%2"
+set /a COUNT=0
+:WaitLoop
+call :CheckPort %PORT%
+if not errorlevel 1 (
+  echo     端口 %PORT% 已就绪。
+  exit /b 0
+)
+set /a COUNT+=1
+if %COUNT% GEQ %MAX_WAIT% (
+  echo     [提醒] 等待端口 %PORT% 超时，请查看对应启动窗口日志。
+  exit /b 1
+)
+timeout /t 1 /nobreak >nul
+goto WaitLoop
